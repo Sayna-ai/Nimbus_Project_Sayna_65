@@ -77,6 +77,11 @@ void addMedicines(Prescription *pr) {
 
         printf("Quantity: ");
         scanf("%d", &m->quantity);
+        if (m->quantity <= 0) 
+        {
+           printf("Invalid quantity! Setting quantity = 1\n");
+              m->quantity = 1;
+        }
         getchar();
 
         m->amount = m->price * (float)m->quantity;
@@ -166,3 +171,4 @@ int main() {
 
     return 0;
 }
+
