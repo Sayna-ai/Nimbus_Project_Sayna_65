@@ -30,8 +30,10 @@ typedef struct {
     float total;
 } Prescription;
 
+// Function to take complete patient details from user
+
 void inputPatientDetails(Patient *p) {
-    printf("Enter patient ID: ");
+    printf("Enter patient ID: "); // Patient ID input
     scanf("%d", &p->patientId);
     getchar();
 
@@ -171,4 +173,5 @@ int main() {
 
     return 0;
 }
+
 
