@@ -98,7 +98,8 @@ void addMedicines(struct Prescription *pr) {
         if ((*m).price < 0) (*m).price = 0;
         if ((*m).qty <= 0) (*m).qty = 1;
 
-        (*m).total = (*m).price * (*m).qty;
+        // Fix warning: int to float conversion
+        (*m).total = (*m).price * (float)(*m).qty;
 
         (*pr).count++;
 
@@ -108,7 +109,7 @@ void addMedicines(struct Prescription *pr) {
     }
 }
 
-// Calculate billing
+// Calculate bill amounts
 void calculateBill(struct Prescription *pr) {
     int i;
     (*pr).subtotal = 0;
@@ -121,7 +122,7 @@ void calculateBill(struct Prescription *pr) {
     (*pr).finalTotal = (*pr).subtotal + (*pr).tax;
 }
 
-// Print invoice on screen
+// Print invoice
 void printInvoice(struct Prescription *pr) {
     int i;
 
