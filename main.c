@@ -1,9 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <errno.h>
+
+/* ---------- Constants ---------- */
 
 #define MAX_MEDICINES 20
-#define NAME_LEN 50
-#define TAX_RATE 0.18f   // 18% tax
+#define NAME_LEN      50
+#define TAX_RATE      0.18f   /* 18% tax */
+
+/* ---------- Data structures ---------- */
 
 typedef struct {
     char name[NAME_LEN];
@@ -15,95 +22,213 @@ typedef struct {
 
 typedef struct {
     char name[NAME_LEN];
-    int age;
+    int  age;
     char gender[10];
     char phone[15];
-    int patientId;
+    int  patientId;
 } Patient;
 
 typedef struct {
     Patient patient;
     Medicine meds[MAX_MEDICINES];
-    int medCount;
+    int   medCount;
     float subTotal;
     float tax;
     float total;
 } Prescription;
 
-// Function to take complete patient details from user
+/* ---------- Safe input helpers ---------- */
+
+int read_line_stdin(char *buf, int size) {
+    if (!fgets(buf, size, stdin)) {
+        buf[0] = '\0';
+        clearerr(stdin);  /* reset in case of error */
+        return 0;
+    }
+    size_t len = strlen(buf);
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        buf[--len] = '\0';
+    }
+    return 1;
+}
+
+int read_int_strict(const char *prompt, int min, int max) {
+    char buf[128];
+    char *endptr;
+    long val;
+
+    while (1) {
+        printf("%s", prompt);
+        if (!read_line_stdin(buf, sizeof buf))
+            continue;
+
+        if (buf[0] == '\0') {
+            printf("Input cannot be empty. Please try again.\n");
+            continue;
+        }
+
+        errno = 0;
+        val = strtol(buf, &endptr, 10);
+        if (errno != 0) {
+            printf("Invalid number. Please try again.\n");
+            continue;
+        }
+
+        /* skip trailing spaces */
+        while (*endptr && isspace((unsigned char)*endptr)) endptr++;
+
+        if (*endptr != '\0') {
+            printf("Invalid input. Please enter digits only.\n");
+            continue;
+        }
+
+        if (val < min || val > max) {
+            printf("Please enter a value between %d and %d.\n", min, max);
+            continue;
+        }
+
+        return (int)val;
+    }
+}
+
+float read_float_strict(const char *prompt, float min, float max) {
+    char buf[128];
+    char *endptr;
+    float val;
+
+    while (1) {
+        printf("%s", prompt);
+        if (!read_line_stdin(buf, sizeof buf))
+            continue;
+
+        if (buf[0] == '\0') {
+            printf("Input cannot be empty. Please try again.\n");
+            continue;
+        }
+
+        errno = 0;
+        val = strtof(buf, &endptr);
+        if (errno != 0) {
+            printf("Invalid number. Please try again.\n");
+            continue;
+        }
+
+        while (*endptr && isspace((unsigned char)*endptr)) endptr++;
+
+        if (*endptr != '\0') {
+            printf("Invalid input. Please enter a numeric value.\n");
+            continue;
+        }
+
+        if (val < min || val > max) {
+            printf("Please enter a value between %.2f and %.2f.\n", min, max);
+            continue;
+        }
+
+        return val;
+    }
+}
+
+void read_nonempty_string(const char *prompt, char *dest, int size) {
+    char buf[256];
+
+    while (1) {
+        printf("%s", prompt);
+        if (!read_line_stdin(buf, sizeof buf))
+            continue;
+
+        if (buf[0] == '\0') {
+            printf("Input cannot be empty. Please try again.\n");
+            continue;
+        }
+
+        /* Optional: forbid strings that are only digits/spaces */
+        int has_alpha = 0;
+        for (size_t i = 0; buf[i] != '\0'; i++) {
+            if (isalpha((unsigned char)buf[i])) {
+                has_alpha = 1;
+                break;
+            }
+        }
+        if (!has_alpha) {
+            printf("Please enter a valid text value (not only numbers).\n");
+            continue;
+        }
+
+        strncpy(dest, buf, (size_t)size - 1);
+        dest[size - 1] = '\0';
+        return;
+    }
+}
+
+/* Simple helper when answer must be 0 or 1 */
+int read_yes_no_int(const char *prompt) {
+    int v;
+    while (1) {
+        v = read_int_strict(prompt, 0, 1);
+        if (v == 0 || v == 1) return v;
+    }
+}
+
+/* ---------- Core logic ---------- */
 
 void inputPatientDetails(Patient *p) {
-    printf("Enter patient ID: "); // Patient ID input
-    scanf("%d", &p->patientId);
-    getchar();
+    p->patientId = read_int_strict("Enter patient ID: ", 1, 1000000000);
 
-    printf("Enter name: ");
-    fgets(p->name, NAME_LEN, stdin);
-    p->name[strcspn(p->name, "\n")] = '\0';
+    read_nonempty_string("Enter name: ", p->name, sizeof p->name);
 
-    printf("Enter age: ");
-    scanf("%d", &p->age);
-    getchar();
+    p->age = read_int_strict("Enter age: ", 0, 130);
 
-    printf("Enter gender: ");
-    fgets(p->gender, sizeof(p->gender), stdin);
-    p->gender[strcspn(p->gender, "\n")] = '\0';
+    read_nonempty_string("Enter gender: ", p->gender, sizeof p->gender);
 
-    printf("Enter phone: ");
-    fgets(p->phone, sizeof(p->phone), stdin);
-    p->phone[strcspn(p->phone, "\n")] = '\0';
+    /* Phone: only check non-empty & max length, allow any characters */
+    char tmp[32];
+    while (1) {
+        printf("Enter phone: ");
+        if (!read_line_stdin(tmp, sizeof tmp))
+            continue;
+        if (tmp[0] == '\0') {
+            printf("Phone cannot be empty. Please try again.\n");
+            continue;
+        }
+        strncpy(p->phone, tmp, sizeof p->phone - 1);
+        p->phone[sizeof p->phone - 1] = '\0';
+        break;
+    }
 }
 
 void addMedicines(Prescription *pr) {
-    int ch;
     pr->medCount = 0;
 
-    do {
+    while (1) {
         if (pr->medCount >= MAX_MEDICINES) {
-            printf("Medicine limit reached.\n");
+            printf("Medicine limit reached (%d).\n", MAX_MEDICINES);
             break;
         }
 
         Medicine *m = &pr->meds[pr->medCount];
 
-        printf("\nMedicine name: ");
-        fgets(m->name, NAME_LEN, stdin);
-        m->name[strcspn(m->name, "\n")] = '\0';
+        read_nonempty_string("\nMedicine name: ", m->name, sizeof m->name);
+        read_nonempty_string("Dosage (e.g. 1-0-1): ", m->dosage, sizeof m->dosage);
 
-        printf("Dosage (e.g. 1-0-1): ");
-        fgets(m->dosage, sizeof(m->dosage), stdin);
-        m->dosage[strcspn(m->dosage, "\n")] = '\0';
+        m->price = read_float_strict("Price per unit: ", 0.0f, 1000000.0f);
 
-        printf("Price per unit: ");
-        scanf("%f", &m->price);
-
-        printf("Quantity: ");
-        scanf("%d", &m->quantity);
-        if (m->quantity <= 0) 
-        {
-           printf("Invalid quantity! Setting quantity = 1\n");
-              m->quantity = 1;
-        }
-        getchar();
+        m->quantity = read_int_strict("Quantity: ", 1, 1000000);
 
         m->amount = m->price * (float)m->quantity;
 
         pr->medCount++;
 
-        printf("Add another medicine? (1 = yes / 0 = no): ");
-        scanf("%d", &ch);
-        getchar();
-
-    } while (ch == 1);
+        if (read_yes_no_int("Add another medicine? (1 = yes / 0 = no): ") == 0)
+            break;
+    }
 }
 
 void calculateBill(Prescription *pr) {
     pr->subTotal = 0.0f;
-
     for (int i = 0; i < pr->medCount; i++) {
         pr->subTotal += pr->meds[i].amount;
     }
-
     pr->tax = pr->subTotal * TAX_RATE;
     pr->total = pr->subTotal + pr->tax;
 }
@@ -134,7 +259,8 @@ void printInvoice(const Prescription *pr) {
 void saveInvoiceToFile(const Prescription *pr, const char *filename) {
     FILE *fp = fopen(filename, "w");
     if (fp == NULL) {
-        printf("Error writing invoice file.\n");
+        /* Show why it failed (permissions, path, etc.) */
+        perror("Error opening invoice file");
         return;
     }
 
@@ -155,11 +281,17 @@ void saveInvoiceToFile(const Prescription *pr, const char *filename) {
     fprintf(fp, "Tax      : %.2f\n", pr->tax);
     fprintf(fp, "Total    : %.2f\n", pr->total);
 
-    fclose(fp);
+    if (fclose(fp) == EOF) {
+        perror("Error closing invoice file");
+        return;
+    }
+
     printf("Invoice saved to file: %s\n", filename);
 }
 
-int main() {
+/* ---------- Main ---------- */
+
+int main(void) {
     Prescription pr;
 
     printf("=== Hospital Prescription and Billing System ===\n\n");
@@ -168,10 +300,7 @@ int main() {
     addMedicines(&pr);
     calculateBill(&pr);
     printInvoice(&pr);
-
     saveInvoiceToFile(&pr, "invoice.txt");
 
     return 0;
 }
-
-
