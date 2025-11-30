@@ -1,0 +1,13 @@
+HOSPITAL PRESCRIPTION AND BILL
+Patient ID : 101
+Name       : Sayna
+Age/Gender : 18 / Female
+Phone      : 9793400000
+
+Medicines:
+1. Paracetamol | 10.00 x 6 = 60.00
+2. Azithromycin | 25.00 x 3 = 75.00
+
+Subtotal : 135.00
+Tax      : 24.30
+Total    : 159.30
