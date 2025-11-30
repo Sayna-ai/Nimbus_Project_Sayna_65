@@ -1,212 +1,211 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAX_MEDICINES 20
-#define NAME_LEN      50
-#define TAX_RATE      0.18f   // 18% tax
+#define MAX_MED 20
+#define NAME_LEN 50
+#define TAX 0.18f
 
-//Structures
-
+// Medicine structure
 struct Medicine {
     char name[NAME_LEN];
+    char dose[20];
     float price;
-    int quantity;
-    char dosage[20];
-    float amount;
+    int qty;
+    float total;
 };
 
+// Patient structure
 struct Patient {
+    int id;
     char name[NAME_LEN];
     int age;
     char gender[10];
     char phone[15];
-    int patientId;
 };
 
+// Prescription structure
 struct Prescription {
-    struct Patient patient;
-    struct Medicine meds[MAX_MEDICINES];
-    int medCount;
-    float subTotal;
+    struct Patient pat;
+    struct Medicine medList[MAX_MED];
+    int count;
+    float subtotal;
     float tax;
-    float total;
+    float finalTotal;
 };
 
-//Simple helpers
-
-void trim_newline(char *s) {
-    size_t len = strlen(s);
-    if (len > 0 && s[len - 1] == '\n') {
-        s[len - 1] = '\0';
-    }
-}
-
-void clear_buffer() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) { }
-}
-
-/* ---------- Input functions ---------- */
-
-void inputPatientDetails(struct Patient *p) {
-
-    printf("Enter patient ID: ");
-    scanf("%d", &p->patientId);
-    clear_buffer();
-
-    printf("Enter patient name: ");
-    fgets(p->name, NAME_LEN, stdin);
-    trim_newline(p->name);
-
-    printf("Enter age: ");
-    scanf("%d", &p->age);
-    clear_buffer();
-    if (p->age <= 0) {
-        printf("Invalid age. Setting age to 1.\n");
-        p->age = 1;
-    }
-
-    printf("Enter gender: ");
-    fgets(p->gender, sizeof(p->gender), stdin);
-    trim_newline(p->gender);
-
-    printf("Enter phone number: ");
-    fgets(p->phone, sizeof(p->phone), stdin);
-    trim_newline(p->phone);
-}
-
-void addMedicines(struct Prescription *pr) {
-    int choice = 1;
-    pr->medCount = 0;
-
-    while (choice == 1 && pr->medCount < MAX_MEDICINES) {
-
-        struct Medicine *m = &pr->meds[pr->medCount];
-
-        printf("\nMedicine %d:\n", pr->medCount + 1);
-
-        printf("Name: ");
-        fgets(m->name, NAME_LEN, stdin);
-        trim_newline(m->name);
-
-        printf("Dosage (e.g. 1-0-1): ");
-        fgets(m->dosage, sizeof(m->dosage), stdin);
-        trim_newline(m->dosage);
-
-        printf("Price per unit: ");
-        scanf("%f", &m->price);
-
-        if (m->price < 0) {
-            printf("Invalid price. Setting to 0.\n");
-            m->price = 0;
-        }
-
-        printf("Quantity: ");
-        scanf("%d", &m->quantity);
-        clear_buffer();
-
-        if (m->quantity <= 0) {
-            printf("Invalid quantity. Setting to 1.\n");
-            m->quantity = 1;
-        }
-
-        m->amount = m->price * m->quantity;
-
-        pr->medCount++;
-
-        if (pr->medCount >= MAX_MEDICINES) {
-            printf("Medicine limit reached.\n");
+// Remove newline from string
+void trim(char s[]) {
+    int i = 0;
+    while (s[i] != '\0') {
+        if (s[i] == '\n') {
+            s[i] = '\0';
             break;
         }
-
-        printf("Add another medicine? (1=yes / 0=no): ");
-        scanf("%d", &choice);
-        clear_buffer();
+        i++;
     }
 }
 
-// Billing
+// Take patient details
+void getPatient(struct Patient *p) {
+    printf("Patient ID: ");
+    scanf("%d", &(*p).id);
+    getchar();
 
+    printf("Name: ");
+    fgets((*p).name, NAME_LEN, stdin);
+    trim((*p).name);
+
+    printf("Age: ");
+    scanf("%d", &(*p).age);
+    getchar();
+    if ((*p).age <= 0) (*p).age = 1;
+
+    printf("Gender: ");
+    fgets((*p).gender, sizeof((*p).gender), stdin);
+    trim((*p).gender);
+
+    printf("Phone: ");
+    fgets((*p).phone, sizeof((*p).phone), stdin);
+    trim((*p).phone);
+}
+
+// Take medicine details
+void addMedicines(struct Prescription *pr) {
+    int more = 1;
+    (*pr).count = 0;
+
+    while (more == 1 && (*pr).count < MAX_MED) {
+        struct Medicine *m = &(*pr).medList[(*pr).count];
+
+        printf("\nMedicine %d\n", (*pr).count + 1);
+
+        printf("Name: ");
+        fgets((*m).name, NAME_LEN, stdin);
+        if ((*m).name[0] == '\n') fgets((*m).name, NAME_LEN, stdin);
+        trim((*m).name);
+
+        printf("Dosage: ");
+        fgets((*m).dose, sizeof((*m).dose), stdin);
+        trim((*m).dose);
+
+        printf("Price: ");
+        scanf("%f", &(*m).price);
+
+        printf("Quantity: ");
+        scanf("%d", &(*m).qty);
+        getchar();
+
+        if ((*m).price < 0) (*m).price = 0;
+        if ((*m).qty <= 0) (*m).qty = 1;
+
+        (*m).total = (*m).price * (*m).qty;
+
+        (*pr).count++;
+
+        printf("Add more? (1=yes / 0=no): ");
+        scanf("%d", &more);
+        getchar();
+    }
+}
+
+// Calculate billing
 void calculateBill(struct Prescription *pr) {
-    pr->subTotal = 0;
+    int i;
+    (*pr).subtotal = 0;
 
-    for (int i = 0; i < pr->medCount; i++) {
-        pr->subTotal += pr->meds[i].amount;
+    for (i = 0; i < (*pr).count; i++) {
+        (*pr).subtotal += (*pr).medList[i].total;
     }
 
-    pr->tax = pr->subTotal * TAX_RATE;
-    pr->total = pr->subTotal + pr->tax;
+    (*pr).tax = (*pr).subtotal * TAX;
+    (*pr).finalTotal = (*pr).subtotal + (*pr).tax;
 }
 
-//Printing
+// Print invoice on screen
+void printInvoice(struct Prescription *pr) {
+    int i;
 
-void printInvoice(const struct Prescription *pr) {
-    printf("\n================= HOSPITAL BILL =================\n");
-    printf("Patient ID : %d\n", pr->patient.patientId);
-    printf("Name       : %s\n", pr->patient.name);
-    printf("Age/Gender : %d / %s\n", pr->patient.age, pr->patient.gender);
-    printf("Phone      : %s\n", pr->patient.phone);
+    printf("\n=========== BILL ===========\n");
+    printf("Patient ID: %d\n", (*pr).pat.id);
+    printf("Name: %s\n", (*pr).pat.name);
+    printf("Age: %d\n", (*pr).pat.age);
+    printf("Gender: %s\n", (*pr).pat.gender);
+    printf("Phone: %s\n", (*pr).pat.phone);
 
-    printf("\nMedicines:\n");
-    printf("%-3s %-20s %-10s %-10s %-10s\n",
-           "No", "Name", "Price", "Qty", "Amount");
+    printf("\nNo  Name                 Price   Qty   Amount\n");
 
-    for (int i = 0; i < pr->medCount; i++) {
-        const struct Medicine *m = &pr->meds[i];
-        printf("%-3d %-20s %-10.2f %-10d %-10.2f\n",
-               i + 1, m->name, m->price, m->quantity, m->amount);
+    for (i = 0; i < (*pr).count; i++) {
+        struct Medicine m = (*pr).medList[i];
+        printf("%-3d %-20s %-7.2f %-5d %-7.2f\n",
+               i + 1, m.name, m.price, m.qty, m.total);
     }
 
-    printf("\nSubtotal : %.2f\n", pr->subTotal);
-    printf("Tax (18%%): %.2f\n", pr->tax);
-    printf("Total    : %.2f\n", pr->total);
-    printf("=================================================\n");
+    printf("\nSubtotal: %.2f\n", (*pr).subtotal);
+    printf("Tax: %.2f\n", (*pr).tax);
+    printf("Total: %.2f\n", (*pr).finalTotal);
+    printf("============================\n");
 }
 
-// Save to file
-
-void saveInvoiceToFile(const struct Prescription *pr, const char *fname) {
-    FILE *fp = fopen(fname, "w");
-    if (!fp) {
-        printf("Unable to create invoice file.\n");
+// Save invoice to file
+void saveFile(struct Prescription *pr) {
+    FILE *fp = fopen("invoice.txt", "w");
+    if (fp == NULL) {
+        printf("File error.\n");
         return;
     }
 
-    fprintf(fp, "HOSPITAL PRESCRIPTION AND BILL\n");
-    fprintf(fp, "Patient ID : %d\n", pr->patient.patientId);
-    fprintf(fp, "Name       : %s\n", pr->patient.name);
-    fprintf(fp, "Age/Gender : %d / %s\n", pr->patient.age, pr->patient.gender);
-    fprintf(fp, "Phone      : %s\n\n", pr->patient.phone);
+    char buf[200];
 
-    fprintf(fp, "Medicines:\n");
-    for (int i = 0; i < pr->medCount; i++) {
-        const struct Medicine *m = &pr->meds[i];
-        fprintf(fp, "%d. %s | %.2f x %d = %.2f\n",
-                i + 1, m->name, m->price, m->quantity, m->amount);
+    sprintf(buf, "Patient ID: %d\n", (*pr).pat.id);
+    fputs(buf, fp);
+
+    sprintf(buf, "Name: %s\n", (*pr).pat.name);
+    fputs(buf, fp);
+
+    sprintf(buf, "Age: %d\n", (*pr).pat.age);
+    fputs(buf, fp);
+
+    sprintf(buf, "Gender: %s\n", (*pr).pat.gender);
+    fputs(buf, fp);
+
+    sprintf(buf, "Phone: %s\n\n", (*pr).pat.phone);
+    fputs(buf, fp);
+
+    for (int i = 0; i < (*pr).count; i++) {
+        sprintf(buf, "%d. %s | %.2f x %d = %.2f\n",
+                i + 1,
+                (*pr).medList[i].name,
+                (*pr).medList[i].price,
+                (*pr).medList[i].qty,
+                (*pr).medList[i].total);
+        fputs(buf, fp);
     }
 
-    fprintf(fp, "\nSubtotal : %.2f\n", pr->subTotal);
-    fprintf(fp, "Tax      : %.2f\n", pr->tax);
-    fprintf(fp, "Total    : %.2f\n", pr->total);
+    sprintf(buf, "\nSubtotal: %.2f\n", (*pr).subtotal);
+    fputs(buf, fp);
+
+    sprintf(buf, "Tax: %.2f\n", (*pr).tax);
+    fputs(buf, fp);
+
+    sprintf(buf, "Total: %.2f\n", (*pr).finalTotal);
+    fputs(buf, fp);
 
     fclose(fp);
 
-    printf("\nInvoice saved to file: %s\n", fname);
+    printf("\nInvoice saved.\n");
 }
 
-//Main
-
+// Main function
 int main() {
+    struct Prescription p;
 
-    struct Prescription pr;
+    printf("=== Hospital Billing System ===\n");
 
-    printf("=== Hospital Prescription and Billing System ===\n\n");
-
-    inputPatientDetails(&pr.patient);
-    addMedicines(&pr);
-    calculateBill(&pr);
-    printInvoice(&pr);
-    saveInvoiceToFile(&pr, "invoice.txt");
+    getPatient(&p.pat);
+    addMedicines(&p);
+    calculateBill(&p);
+    printInvoice(&p);
+    saveFile(&p);
 
     return 0;
 }
